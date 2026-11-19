@@ -1,0 +1,5 @@
+# Your videos, retention data and profiles live in ~/EditsRetention, never in this folder.
+.DS_Store
+*.mp4
+*.mov
+node_modules/
