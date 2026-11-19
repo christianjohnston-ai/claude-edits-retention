@@ -37,7 +37,8 @@ it set up, nothing above needs collecting by hand. Its files, per Reel, in
 - `meta.json`: `created_ts`, when the Reel was posted (a Unix timestamp). Use a Reel only if it was posted at least 48
   hours before that capture. If `meta.json` has no time, the capture's `media_created_at` may have it (it can be null).
 - `words.json`: the words with times (`{"words": [{"w", "s", "e"}]}`), the same format used below. It is missing when
-  the teardown could not download that Reel's video: skip those Reels.
+  the teardown could not download that Reel's video: skip those Reels. Skip a Reel, too, when its `words.json` holds
+  fewer than one word per 2 seconds of video: its speech was not transcribed (a music-only Reel, for example).
 - `video.mp4`: the video itself.
 Write `curve.json` from the capture (`"source": "teardown"`), copy `words.json`, and go straight to "Beats and labels".
 Never change or delete anything in the teardown's folder.
@@ -73,13 +74,17 @@ cannot read a graph at all, skip that video and say so.
 ## Words with times
 
 Import the video into a scratch Edits project (copy it into `~/Movies/Edits/Imports/` first), call `transcribeClip` on
-its clip, and save the words as `words.json`: `{"words": [{"w": "word", "s": 1.24, "e": 1.51}, ...]}`. Close the scratch
-project when done (never delete projects).
+its clip, and save the words as `words.json`: `{"words": [{"w": "word", "s": 1.24, "e": 1.51}, ...]}`. Edits answers
+with `{"text", "start", "end"}` for each word, so rename the fields as you save. Close the scratch project when done
+(never delete projects).
 
 ## Beats and labels
 
-Split the words into beats: one beat per sentence or spoken thought, usually 1 to 6 seconds. Give each beat ONE label,
-judged from the words alone. Label BEFORE you look at the curve, so the curve can't talk you into a label.
+Split the words into beats: one beat per sentence or spoken thought, usually 1 to 6 seconds. Some transcripts lose
+their punctuation for long stretches; break those at a comma, before a capital letter that starts a lost sentence, or
+every 6 seconds. Give each beat ONE label, judged from the words alone. Label BEFORE you look at the curve, so the
+curve can't talk you into a label. Every gap of 0.6 seconds or more between two words becomes its own `pause` beat.
+Beats touch end to end: each one ends where the next one starts, and the first starts at 0.
 
 | Label | Use it for |
 |---|---|

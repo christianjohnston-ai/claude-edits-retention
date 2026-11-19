@@ -5,7 +5,8 @@ description: Use when the person wants Claude to edit a short vertical video (an
 
 # Editing Reels for retention, in Instagram's Edits app
 
-Version 1, November 18, 2026. If an older copy of this skill exists, this one replaces it.
+Version 2, November 18, 2026: corrected after its first full end-to-end run on Edits 456. If an older copy of this
+skill exists, this one replaces it.
 
 Three things this skill does, each one only when the person asks:
 1. **Set up** (once): check the Mac, connect Claude Code to Edits, make the data folder. Part 1.
@@ -97,8 +98,9 @@ offer to set the teardown up first (its README's one-line install, Instagram ste
    null), the capture time is `captured_at` (a date string). Read the newest line of `captures.jsonl` that has
    `retention.points` and write `~/EditsRetention/past/<shortcode>/curve.json` (`"platform": "instagram"`,
    `"source": "teardown"`, `views` from the same line, `points` as they are), and copy `words.json` beside it. Skip a
-   Reel with no curve, no posted time or no `words.json` (its video download failed), and say how many you skipped and
-   why.
+   Reel with no curve, no posted time or no `words.json` (its video download failed), and also one whose `words.json`
+   holds fewer than one word per 2 seconds of video (its speech was not transcribed, for example a music-only Reel).
+   Say how many you skipped and why.
 
 **Route B, screenshots (no cmux, or TikTok without the teardown).**
 1. **Collect.** For each past video (aim for 10 or more, each posted at least 48 hours ago), the person makes a folder in
@@ -112,12 +114,15 @@ offer to set the teardown up first (its README's one-line install, Instagram ste
 
 **Then, either route:**
 4. **Split into beats and label them from the words alone, before you look at the curve.** Use the fixed label set in the
-   method file. Save `beats.json`.
+   method file. Make every gap of 0.6 seconds or more between two words in `words.json` its own `pause` beat, as in
+   Part 3. Beats touch end to end: each ends where the next starts. Save `beats.json`.
 5. **Build the profile:** `node scripts/viewer_profile.mjs ~/EditsRetention/past` (from this skill's folder). It writes
    `~/EditsRetention/profile/profile.json` and prints a table.
 6. **Explain it** in plain words: which kinds of moments make their viewers leave faster than their own average, which
    hold better, and which have too little data to say. Name the number of videos behind each line. If most lines say
-   "not enough data", say so honestly and explain what more data would change.
+   "not enough data", say so honestly and explain what more data would change. Expect the payoff, after-the-payoff
+   and call-to-action lines to say it on most accounts: by then usually fewer than 10% of viewers are still watching,
+   so the script skips those beats. Flags for those moments come from the after-the-payoff check instead.
 
 Test: `profile.json` exists, and the person has heard which moments lose their viewers, with the video counts.
 
@@ -127,46 +132,65 @@ Work in this order. After each step, read the result back from Edits (`clips`, `
 changed.
 
 1. **Import.** Copy the video into `~/Movies/Edits/Imports/` (Edits can only read some folders; this one works). Call
-   `newProject`, give it a clear title, set the canvas to 9:16 at 30 fps (`setCanvas`, read its schema), then `addMedia`
-   with the copied file's path.
-2. **Words.** `transcribeClip` on the main clip. Save `~/EditsRetention/new/<name>/words.json`.
-3. **Beats and flags.** Split into beats and label them the same way as Part 2 (words only). Then make every pause over
-   0.6 seconds from `findPauses` its own `pause` beat: end the beat before it where the pause starts and start the next
-   one where it ends, so no two beats overlap. Save `beats.json`. Run
+   `newProject`, title it (`setTitle`), set the canvas with `setCanvas {"aspect": "9:16", "frameRate": 30}`, then
+   `addMedia` with the copied file's path. Keep the clip `id` it returns.
+2. **Words.** `transcribeClip` on the main clip (it needs all four arguments in edits-tools.md). It returns each word
+   as `{text, start, end}`; save them as `~/EditsRetention/new/<name>/words.json` in the method file's `{w, s, e}`
+   format.
+3. **Beats and flags.** Split into beats and label them the same way as Part 2 (words only). Then find the pauses:
+   read `audioLevels` on the clip, call `findPauses` with `minDuration` 0.6 and `thresholdDb` about 3 dB above its
+   `noiseFloorDb`, and keep only the part of each pause that no word in `words.json` overlaps (quiet words read as
+   pauses too). Each part of 0.6 seconds or more becomes its own `pause` beat: end the beat before it where the pause
+   starts and start the next one where it ends, so no two beats overlap. A Reel that was already cut tight often has
+   none, and that is fine. Save `beats.json`. Run
    `node scripts/flag_cut.mjs ~/EditsRetention/profile/profile.json ~/EditsRetention/new/<name>/beats.json` (pass `none`
    instead of the profile if Part 2 has not been done yet; then only the after-the-payoff and pause checks run, and say
    so). It prints flags with codes (F1, F2...): the seconds, the words, and why. It never flags the hook, the main
    point, the payoff or the call to action; if one of those leaks, it prints a note to tighten it instead.
 4. **The person picks.** Show every flag. They answer by code ("cut F1 and F3, keep F2"). No answer means no cut.
-5. **Cut.** For each approved flag, from the LAST one to the first (so earlier times don't move): find clean cut points
-   with `quietPoint` near each edge, `splitAt` the main clip at both points, select the middle piece with `selectById`
-   and `delete` it. Then read `clips` and confirm there is no gap. If there is one, close it before the next cut. Tell
-   them the new length. Then run `transcribeClip` on each remaining main-track clip in order (their words come back in
-   timeline seconds) and save them together as `words_after.json`: every time from here on (captions, music, beats,
-   effects, and Part 4) uses the NEW timeline, not the old one.
-6. **Captions.** `generateCaptions`, then list the caption styles and apply the one they pick (`setCaptionStyle`).
-   Check a few captions against `words.json` and fix misheard names with `editCaption`.
-7. **Music.** Ask the mood. Search with plain mood words (`searchMusic`), play their top picks (`previewMusicTrack`),
-   add the chosen one (`addSongToComposition`), set it well under the voice (`setVolume`, start around 0.2 and let them
-   judge), fade it out at the end (`setFade`). If they will post the same file on TikTok or YouTube, pick from the
-   royalty-free tab and tell them Edits' music is licensed for Instagram's own apps.
-8. **Beat timing.** Get the beat times (`beatMarkers` on the music element after `setBeatDensity`; if it has none,
-   `audioOnsets` gives the tempo). Then: slip the music (`slipClip`) so a strong beat lands on the payoff or the first
-   cut, read `beatMarkers` AGAIN (slipping moves every beat), and place every sound effect and text pop-in on the nearest
-   beat. Do not move cuts inside speech to chase a beat:
-   the words come first.
+5. **Cut.** For each approved flag, from the LAST one to the first (so earlier times don't move):
+   - At each edge, find the gap between the last word you keep and the first word you cut. Call `quietPoint` at the
+     middle of that gap with `window` set to half the gap, so the cut cannot land inside a word.
+   - `splitAt` the main clip at both points with `"snap": "projectFrame"`, and check the snapped times it returns are
+     still inside the two gaps. Every piece gets a NEW id (the first one too): use the ids in its answer.
+   - `selectById` the middle piece and `delete` it.
+   - Read `clips`: each clip must start where the one before it ends. If there is a gap, close it before the next cut.
+   Tell them the new length. Then run `transcribeClip` on each remaining main-track clip in order (their words come
+   back in timeline seconds) and save them together, converted, as `words_after.json`: every time from here on
+   (captions, music, beats, effects, and Part 4) uses the NEW timeline, not the old one.
+6. **Captions.** `generateCaptions`, then `listCaptionStyles` and apply the one they pick (`setCaptionStyle` with no
+   `id` styles every caption). Read `captions`, compare their words with `words_after.json`, and fix misheard names
+   with `editCaption`.
+7. **Music.** Ask the mood, and whether the file will go anywhere besides Instagram. For anything that leaves
+   Instagram, list the royalty-free tab (`listMusicTracks {"tab": "royalty-free"}`) and tell them Edits' music is
+   licensed for Instagram's own apps. Show them titles and lengths, and play their top picks (`previewMusicTrack`).
+   `seek` to 0, then add the chosen one with `addSongToComposition {"audioAssetId": "<its id>"}`. Never add by
+   `track`: that is a title search that adds the first hit, and in the first real run it added an unrelated licensed
+   song. Check the answer's `title` and `license.type` before going on. Set it well under the voice (`setVolume`,
+   start around 0.2 and let them judge) and fade it out at the end (`setFade`).
+8. **Beat timing.** Get the beat times (`setBeatDensity` "medium", then `beatMarkers` on the music element; if it has
+   none, `audioOnsets` gives the tempo). Slip the music (`slipClip`) so a downbeat lands on the first cut or the
+   payoff: a positive `deltaSeconds` moves every beat EARLIER by that much. Read `beatMarkers` AGAIN to confirm. Put a
+   sound effect or text pop-in on a beat only when one falls within about 0.15 seconds of its moment; otherwise keep it
+   on its word. Do not move cuts inside speech to chase a beat: the words come first.
 9. **Sound effects.** Few and purposeful: a soft whoosh on a cut, a pop when a key word or number appears. Search with a
-   word (`searchSoundEffects`, never an empty query), `seek` to the moment, `addSoundEffect`, then set its volume under
-   the voice. Read `elements` to confirm each landed where you meant.
+   word (`searchSoundEffects {"query": "whoosh"}`, never an empty query) and pick by title and length. `seek` to the
+   moment (for a short whoosh, half its length before the cut, so it peaks on the cut), then
+   `addSoundEffect {"effect": "<id from the search>"}` and check the answer's `title`. Set it under the voice
+   (`setVolume`, 0.5 is a fair start). Read `elements` to confirm each landed where you meant and the music is still
+   whole.
 10. **Export.** `setExportSettings` with the full row (see edits-tools.md: 1080x1920, HD, nineBySixteen, high, 30 fps,
-    SDR), `export` to `~/Movies/Edits/Exports/<name>.mp4`, and poll `exportStatus` until it says complete. Give them the
-    file's path and open its folder (`open -R <path>`). Edits exports HEVC only.
+    SDR; leave `codec` out, Edits exports HEVC only), `export` to `~/Movies/Edits/Exports/<name>.mp4`, and poll
+    `exportStatus` every 10 seconds or so: its `state` goes `preparing`, then `exporting` (with `progress` from 0 to 1),
+    then `complete`. Then `saveProject`. Give them the file's path and open its folder (`open -R <path>`).
 11. **Record** in `~/EditsRetention/new/<name>/cuts.json`: each cut (code, old seconds, words), and each flag the person
     kept, with its time moved onto the new timeline (its old start minus the length of every cut before it). Part 4
     needs those new times.
 
-Before you call it done: the export exists, its length matches the project, captions match the words, and the voice is
-clearly louder than the music. Tell them where the file is and what you did, in five lines or fewer. Never post it.
+Before you call it done: the export exists, its length matches the project (`state` gives the project's `duration`),
+captions match the words, and the voice is clearly louder than the music. If `ffprobe` is installed, also check it
+reads 1080x1920 at 30 fps with an audio stream. Tell them where the file is and what you did, in five lines or fewer.
+Never post it.
 
 ## Part 4. Grade the flags (48 hours after posting)
 

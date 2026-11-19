@@ -78,10 +78,11 @@ your payoff or your call to action. The details are in [mind-reader-method.md](.
 - It never touches your existing Edits projects. Every edit happens in a new project.
 - Your videos, screenshots and retention data stay in `~/EditsRetention` on your Mac. Claude reads them in your chat to
   do the work, like any file you show it, and never uploads them anywhere else.
-- What has run end to end on a real Mac so far: Claude opened Edits, made a new project, imported a 4-minute video,
-  placed a library song in two segments at exact points and volumes, and exported a finished 1080p file in about a
-  minute. Cutting, captions, sound effects, beat markers and the 9:16 export use Edits' tools that have not been run end
-  to end yet, so Claude checks each result as it goes.
+- What has run end to end on a real Mac (Edits 456, November 18, 2026): the mind reader learned from a creator's own
+  teardown data, flagged a slow set-up in a new Reel, and Claude cut it in Edits, added captions, a royalty-free song
+  with a downbeat placed on the cut, and two sound effects, then exported a 1080x1920, 30 fps file with every word
+  outside the approved cut intact. That run corrected more than a dozen steps of this skill (see gotchas.md). Text overlays,
+  transitions and video effects have not been run yet, so Claude checks each result as it goes.
 - What 10 videos will show: only the strongest one or two patterns. A kind of moment needs nearly all of your videos to
   agree before it gets a verdict, so most of the table says "not enough data yet" at first and fills in as you add
   videos. Until then, most flags come from the general checks (anything after the payoff, long pauses).
