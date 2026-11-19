@@ -83,9 +83,10 @@ your payoff or your call to action. The details are in [mind-reader-method.md](.
   with a downbeat placed on the cut, and two sound effects, then exported a 1080x1920, 30 fps file with every word
   outside the approved cut intact. That run corrected more than a dozen steps of this skill (see gotchas.md). Text overlays,
   transitions and video effects have not been run yet, so Claude checks each result as it goes.
-- What 10 videos will show: only the strongest one or two patterns. A kind of moment needs nearly all of your videos to
-  agree before it gets a verdict, so most of the table says "not enough data yet" at first and fills in as you add
-  videos. Until then, most flags come from the general checks (anything after the payoff, long pauses).
+- What to expect from the mind reader at first: on the author's own account, 28 Reels gave no verdict yet. A kind of
+  moment needs nearly all of your videos to agree before it gets one, so the table can read "not enough data yet" for a
+  long time. Until it fills in, the flags come from the general checks: the main point landing later than your usual,
+  anything after the payoff, and long pauses.
 - Edits' music library is Meta's. If you'll post the same file on TikTok or YouTube, pick from the royalty-free tab and
   check the terms yourself.
 - Edits updates often. The skill reads Edits' own list of tools every session instead of trusting a fixed list.
